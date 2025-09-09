@@ -28,7 +28,7 @@ export default function QRCodeManager() {
 
       if (error) throw error
       setTables(data || [])
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching tables:', error)
       toast.error('Failed to load tables')
     } finally {
@@ -54,11 +54,11 @@ export default function QRCodeManager() {
 
       const { data, error } = await supabase
         .from('tables')
-        .insert({
+        .insert([{
           table_number: tableNumber,
           qr_code: qrCode,
           is_active: true
-        })
+        }] as any)
         .select()
         .single()
 
@@ -74,7 +74,7 @@ export default function QRCodeManager() {
       setTables([...tables, data])
       setNewTableNumber('')
       toast.success(`Table ${tableNumber} created successfully`)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating table:', error)
       toast.error('Failed to create table')
     }
@@ -95,7 +95,7 @@ export default function QRCodeManager() {
 
       setTables(tables.filter(table => table.id !== tableId))
       toast.success('Table deleted successfully')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting table:', error)
       toast.error('Failed to delete table')
     }
@@ -219,91 +219,92 @@ export default function QRCodeManager() {
 
   if (loading) {
     return (
-      <div className=\"flex items-center justify-center py-12\">
-        <div className=\"animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600\"></div>
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
       </div>
     )
   }
 
   return (
-    <div className=\"space-y-6\">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className=\"flex items-center justify-between\">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className=\"text-2xl font-bold text-gray-900\">QR Code Management</h2>
-          <p className=\"text-gray-600\">Generate and manage QR codes for tables</p>
+          <h2 className="text-2xl font-bold text-slate-900">QR Code Management</h2>
+          <p className="text-slate-700 font-medium">Generate and manage QR codes for tables</p>
         </div>
       </div>
 
       {/* Add New Table */}
-      <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">
-        <h3 className=\"text-lg font-semibold text-gray-900 mb-4\">Add New Table</h3>
-        <div className=\"flex gap-3\">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Add New Table</h3>
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
-            type=\"number\"
+            type="number"
             value={newTableNumber}
             onChange={(e) => setNewTableNumber(e.target.value)}
-            placeholder=\"Table number\"
-            className=\"flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent\"
-            min=\"1\"
+            placeholder="Table number"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-slate-900 placeholder:text-slate-500"
+            min="1"
           />
           <button
             onClick={createTable}
-            className=\"bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2\"
+            className="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center gap-2 font-medium"
           >
-            <Plus className=\"w-4 h-4\" />
-            Create Table
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Create Table</span>
+            <span className="sm:hidden">Create</span>
           </button>
         </div>
       </div>
 
       {/* Tables Grid */}
-      <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6\">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {tables.map((table) => (
-          <div key={table.id} className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">
-            <div className=\"flex items-center justify-between mb-4\">
-              <div className=\"flex items-center gap-3\">
-                <div className=\"p-2 bg-amber-100 rounded-lg\">
-                  <QrCode className=\"w-6 h-6 text-amber-600\" />
+          <div key={table.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <QrCode className="w-6 h-6 text-amber-600" />
                 </div>
-                <div>
-                  <h3 className=\"font-semibold text-gray-900\">Table {table.table_number}</h3>
-                  <p className=\"text-sm text-gray-600\">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-slate-900">Table {table.table_number}</h3>
+                  <p className="text-sm text-slate-600 font-medium">
                     {table.is_active ? 'Active' : 'Inactive'}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => deleteTable(table.id)}
-                className=\"p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors\"
-                title=\"Delete table\"
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Delete table"
               >
-                <Trash2 className=\"w-4 h-4\" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
 
-            <div className=\"space-y-3\">
+            <div className="space-y-3">
               <button
                 onClick={() => downloadQRCode(table)}
                 disabled={generatingQR === table.id}
-                className=\"w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50\"
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 font-medium"
               >
-                <Download className=\"w-4 h-4\" />
+                <Download className="w-4 h-4" />
                 {generatingQR === table.id ? 'Generating...' : 'Download QR'}
               </button>
               
               <button
                 onClick={() => printQRCode(table)}
                 disabled={generatingQR === table.id}
-                className=\"w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50\"
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 font-medium"
               >
-                <Printer className=\"w-4 h-4\" />
+                <Printer className="w-4 h-4" />
                 {generatingQR === table.id ? 'Generating...' : 'Print QR'}
               </button>
             </div>
 
-            <div className=\"mt-4 p-3 bg-gray-50 rounded-lg\">
-              <p className=\"text-xs text-gray-600 break-all\">
+            <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+              <p className="text-xs text-slate-600 font-medium break-all">
                 URL: /table/{table.table_number}
               </p>
             </div>
@@ -312,10 +313,10 @@ export default function QRCodeManager() {
       </div>
 
       {tables.length === 0 && (
-        <div className=\"text-center py-12\">
-          <QrCode className=\"w-16 h-16 text-gray-300 mx-auto mb-4\" />
-          <h3 className=\"text-lg font-medium text-gray-900 mb-2\">No tables yet</h3>
-          <p className=\"text-gray-600\">Create your first table to generate QR codes</p>
+        <div className="text-center py-8 md:py-12">
+          <QrCode className="w-12 md:w-16 h-12 md:h-16 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">No tables yet</h3>
+          <p className="text-slate-600 font-medium">Create your first table to generate QR codes</p>
         </div>
       )}
     </div>

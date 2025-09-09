@@ -67,26 +67,26 @@ export default function PWAInstaller() {
   }
 
   return (
-    <div className=\"fixed bottom-4 left-4 right-4 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-50 max-w-sm mx-auto\">
-      <div className=\"flex items-start gap-3\">
-        <div className=\"p-2 bg-amber-100 rounded-lg flex-shrink-0\">
-          <Download className=\"w-5 h-5 text-amber-600\" />
+    <div className="fixed bottom-4 left-4 right-4 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-50 max-w-sm mx-auto">
+      <div className="flex items-start gap-3">
+        <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
+          <Download className="w-5 h-5 text-amber-600" />
         </div>
-        <div className=\"flex-1 min-w-0\">
-          <h3 className=\"font-semibold text-gray-900 text-sm\">Install Cafe Order</h3>
-          <p className=\"text-gray-600 text-xs mt-1\">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 text-sm">Install Cafe Order</h3>
+          <p className="text-gray-600 text-xs mt-1">
             Add to your home screen for quick access
           </p>
-          <div className=\"flex gap-2 mt-3\">
+          <div className="flex gap-2 mt-3">
             <button
               onClick={handleInstallClick}
-              className=\"bg-amber-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors\"
+              className="bg-amber-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors"
             >
               Install
             </button>
             <button
               onClick={handleDismiss}
-              className=\"text-gray-600 text-xs px-3 py-1.5 hover:text-gray-800 transition-colors\"
+              className="text-gray-600 text-xs px-3 py-1.5 hover:text-gray-800 transition-colors"
             >
               Not now
             </button>
@@ -94,9 +94,9 @@ export default function PWAInstaller() {
         </div>
         <button
           onClick={handleDismiss}
-          className=\"p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0\"
+          className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
         >
-          <X className=\"w-4 h-4 text-gray-500\" />
+          <X className="w-4 h-4 text-gray-500" />
         </button>
       </div>
     </div>

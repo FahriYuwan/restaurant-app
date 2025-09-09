@@ -52,6 +52,24 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
 
     setIsSubmitting(true)
     try {
+      // Check stock availability first
+      for (const item of state.items) {
+        if (item.menu.stock_quantity !== null) {
+          const { data: currentMenu, error: stockError } = await supabase
+            .from('menus')
+            .select('stock_quantity')
+            .eq('id', item.menu.id)
+            .single()
+
+          if (stockError) throw stockError
+          
+          if (currentMenu.stock_quantity < item.quantity) {
+            toast.error(`Stok ${item.menu.name} tidak mencukupi. Tersisa: ${currentMenu.stock_quantity}`)
+            return
+          }
+        }
+      }
+
       // Create order
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -81,6 +99,24 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
 
       if (itemsError) throw itemsError
 
+      // Update stock quantities
+      for (const item of state.items) {
+        if (item.menu.stock_quantity !== null) {
+          const { error: stockUpdateError } = await supabase
+            .from('menus')
+            .update({
+              stock_quantity: item.menu.stock_quantity - item.quantity,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', item.menu.id)
+
+          if (stockUpdateError) {
+            console.error('Error updating stock:', stockUpdateError)
+            // Don't throw error here to avoid blocking the order, just log it
+          }
+        }
+      }
+
       toast.success('Pesanan berhasil dikirim!')
       dispatch({ type: 'CLEAR_CART' })
       setOrderNotes('')
@@ -88,7 +124,7 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
       
       // Redirect to order status page
       window.location.href = `/table/${tableId}/order/${order.id}`
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting order:', error)
       toast.error('Gagal mengirim pesanan. Silakan coba lagi.')
     } finally {
@@ -99,4 +135,148 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
   if (!isOpen) return null
 
   return (
-    <div className=\"fixed inset-0 z-50 overflow-hidden\">\n      {/* Backdrop */}\n      <div \n        className=\"absolute inset-0 bg-black bg-opacity-50\" \n        onClick={onClose}\n      />\n      \n      {/* Cart Panel */}\n      <div className=\"absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl flex flex-col\">\n        {/* Header */}\n        <div className=\"flex items-center justify-between p-4 border-b border-gray-200\">\n          <div className=\"flex items-center gap-2\">\n            <ShoppingCart className=\"w-6 h-6 text-amber-600\" />\n            <h2 className=\"text-xl font-semibold\">Keranjang ({state.items.length})</h2>\n          </div>\n          <button\n            onClick={onClose}\n            className=\"p-2 hover:bg-gray-100 rounded-full transition-colors\"\n          >\n            <X className=\"w-6 h-6\" />\n          </button>\n        </div>\n\n        {/* Cart Content */}\n        <div className=\"flex-1 overflow-y-auto\">\n          {state.items.length === 0 ? (\n            <div className=\"flex flex-col items-center justify-center h-full text-gray-500\">\n              <ShoppingCart className=\"w-16 h-16 mb-4 text-gray-300\" />\n              <p className=\"text-lg font-medium mb-2\">Keranjang Kosong</p>\n              <p className=\"text-sm text-center px-4\">\n                Tambahkan menu favorit Anda ke keranjang untuk melanjutkan pemesanan\n              </p>\n            </div>\n          ) : (\n            <div className=\"p-4 space-y-4\">\n              {state.items.map((item) => (\n                <div key={item.menu.id} className=\"bg-gray-50 rounded-xl p-4\">\n                  <div className=\"flex justify-between items-start mb-3\">\n                    <div className=\"flex-1\">\n                      <h3 className=\"font-semibold text-gray-900\">{item.menu.name}</h3>\n                      <p className=\"text-amber-600 font-medium\">\n                        {formatPrice(item.menu.price)}\n                      </p>\n                    </div>\n                    <button\n                      onClick={() => removeItem(item.menu.id)}\n                      className=\"p-1 hover:bg-gray-200 rounded-full transition-colors\"\n                    >\n                      <X className=\"w-4 h-4 text-gray-500\" />\n                    </button>\n                  </div>\n\n                  {/* Quantity Control */}\n                  <div className=\"flex items-center justify-between mb-3\">\n                    <span className=\"text-sm font-medium text-gray-700\">Jumlah:</span>\n                    <div className=\"flex items-center gap-3\">\n                      <button\n                        onClick={() => updateQuantity(item.menu.id, Math.max(1, item.quantity - 1))}\n                        className=\"w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors border\"\n                      >\n                        <Minus className=\"w-4 h-4\" />\n                      </button>\n                      <span className=\"w-8 text-center font-semibold\">{item.quantity}</span>\n                      <button\n                        onClick={() => updateQuantity(item.menu.id, item.quantity + 1)}\n                        className=\"w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors border\"\n                      >\n                        <Plus className=\"w-4 h-4\" />\n                      </button>\n                    </div>\n                  </div>\n\n                  {/* Special Notes */}\n                  <div className=\"space-y-2\">\n                    <label className=\"text-sm font-medium text-gray-700 flex items-center gap-1\">\n                      <MessageSquare className=\"w-4 h-4\" />\n                      Catatan khusus:\n                    </label>\n                    <textarea\n                      value={item.specialNotes || ''}\n                      onChange={(e) => updateNotes(item.menu.id, e.target.value)}\n                      placeholder=\"Contoh: tanpa es, pedas level 2\"\n                      className=\"w-full p-2 text-sm border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-transparent\"\n                      rows={2}\n                    />\n                  </div>\n\n                  {/* Subtotal */}\n                  <div className=\"mt-3 pt-3 border-t border-gray-200\">\n                    <div className=\"flex justify-between items-center\">\n                      <span className=\"text-sm font-medium text-gray-700\">Subtotal:</span>\n                      <span className=\"font-semibold text-amber-600\">\n                        {formatPrice(item.menu.price * item.quantity)}\n                      </span>\n                    </div>\n                  </div>\n                </div>\n              ))}\n\n              {/* Order Notes */}\n              <div className=\"bg-gray-50 rounded-xl p-4\">\n                <label className=\"text-sm font-medium text-gray-700 flex items-center gap-1 mb-2\">\n                  <MessageSquare className=\"w-4 h-4\" />\n                  Catatan pesanan:\n                </label>\n                <textarea\n                  value={orderNotes}\n                  onChange={(e) => setOrderNotes(e.target.value)}\n                  placeholder=\"Catatan tambahan untuk seluruh pesanan...\"\n                  className=\"w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-transparent\"\n                  rows={3}\n                />\n              </div>\n            </div>\n          )}\n        </div>\n\n        {/* Footer */}\n        {state.items.length > 0 && (\n          <div className=\"border-t border-gray-200 p-4 bg-white\">\n            <div className=\"mb-4\">\n              <div className=\"flex justify-between items-center mb-2\">\n                <span className=\"text-lg font-semibold text-gray-900\">Total:</span>\n                <span className=\"text-2xl font-bold text-amber-600\">\n                  {formatPrice(state.total)}\n                </span>\n              </div>\n              <p className=\"text-sm text-gray-600\">\n                Pembayaran dilakukan di kasir setelah pesanan siap\n              </p>\n            </div>\n            \n            <button\n              onClick={submitOrder}\n              disabled={isSubmitting}\n              className=\"w-full bg-amber-600 text-white py-4 px-4 rounded-xl font-semibold hover:bg-amber-700 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors\"\n            >\n              {isSubmitting ? 'Memproses...' : 'Pesan Sekarang'}\n            </button>\n          </div>\n        )}\n      </div>\n    </div>\n  )\n}
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black bg-opacity-50" 
+        onClick={onClose}
+      />
+      
+      {/* Cart Panel */}
+      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="w-6 h-6 text-amber-600" />
+            <h2 className="text-xl font-semibold text-slate-900">Keranjang ({state.items.length})</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-6 h-6 text-slate-600" />
+          </button>
+        </div>
+
+        {/* Cart Content */}
+        <div className="flex-1 overflow-y-auto">
+          {state.items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+              <ShoppingCart className="w-16 h-16 mb-4 text-gray-300" />
+              <p className="text-lg font-medium mb-2">Keranjang Kosong</p>
+              <p className="text-sm text-center px-4">
+                Tambahkan menu favorit Anda ke keranjang untuk melanjutkan pemesanan
+              </p>
+            </div>
+          ) : (
+            <div className="p-4 space-y-4">
+              {state.items.map((item) => (
+                <div key={item.menu.id} className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-slate-900">{item.menu.name}</h3>
+                      <p className="text-amber-600 font-medium">
+                        {formatPrice(item.menu.price)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removeItem(item.menu.id)}
+                      className="p-1 hover:bg-slate-200 rounded-full transition-colors"
+                    >
+                      <X className="w-4 h-4 text-slate-600" />
+                    </button>
+                  </div>
+
+                  {/* Quantity Control */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-slate-800">Jumlah:</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => updateQuantity(item.menu.id, Math.max(1, item.quantity - 1))}
+                        className="w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-slate-50 transition-colors border border-slate-200"
+                      >
+                        <Minus className="w-4 h-4 text-slate-700" />
+                      </button>
+                      <span className="w-8 text-center font-bold text-slate-900 bg-white py-1 px-2 rounded border border-slate-200">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.menu.id, item.quantity + 1)}
+                        className="w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-slate-50 transition-colors border border-slate-200"
+                      >
+                        <Plus className="w-4 h-4 text-slate-700" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Special Notes */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-800 flex items-center gap-1">
+                      <MessageSquare className="w-4 h-4 text-slate-600" />
+                      Catatan khusus:
+                    </label>
+                    <textarea
+                      value={item.specialNotes || ''}
+                      onChange={(e) => updateNotes(item.menu.id, e.target.value)}
+                      placeholder="Contoh: tanpa es, pedas level 2"
+                      className="w-full p-2 text-sm border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-slate-900 placeholder:text-slate-500 bg-white"
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Subtotal */}
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-slate-800">Subtotal:</span>
+                      <span className="font-semibold text-amber-600">
+                        {formatPrice(item.menu.price * item.quantity)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Order Notes */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <label className="text-sm font-medium text-slate-800 flex items-center gap-1 mb-2">
+                  <MessageSquare className="w-4 h-4 text-slate-600" />
+                  Catatan pesanan:
+                </label>
+                <textarea
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  placeholder="Catatan tambahan untuk seluruh pesanan..."
+                  className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-slate-900 placeholder:text-slate-500 bg-white"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {state.items.length > 0 && (
+          <div className="border-t border-gray-200 p-4 bg-white">
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-lg font-semibold text-slate-900">Total:</span>
+                <span className="text-2xl font-bold text-amber-600">
+                  {formatPrice(state.total)}
+                </span>
+              </div>
+              <p className="text-sm text-slate-700 font-medium">
+                Pembayaran dilakukan di kasir setelah pesanan siap
+              </p>
+            </div>
+            
+            <button
+              onClick={submitOrder}
+              disabled={isSubmitting}
+              className="w-full bg-amber-600 text-white py-4 px-4 rounded-xl font-semibold hover:bg-amber-700 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSubmitting ? 'Memproses...' : 'Pesan Sekarang'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

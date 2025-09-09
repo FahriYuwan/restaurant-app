@@ -51,7 +51,7 @@ export default function AdminDashboard() {
 
       if (error) throw error
       
-      const newOrders = data || []
+      const newOrders = (data || []) as Order[]
       const pendingOrders = newOrders.filter(order => order.status === 'pending')
       
       // Play sound for new orders (only if order count increased)
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
       
       setOrders(newOrders)
       setLastOrderCount(pendingOrders.length)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching orders:', error)
       toast.error('Failed to load orders')
     } finally {
@@ -88,15 +88,15 @@ export default function AdminDashboard() {
     return () => subscription.unsubscribe()
   }
 
-  const updateOrderStatus = async (orderId: number, newStatus: string) => {
+  const updateOrderStatus = async (orderId: number, newStatus: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled') => {
     setUpdatingStatus(orderId)
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ 
+        .update({
           status: newStatus,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', orderId)
 
       if (error) throw error
@@ -110,7 +110,7 @@ export default function AdminDashboard() {
 
       toast.success(`Order status updated to ${newStatus}`)
       await fetchOrders()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating order status:', error)
       toast.error('Failed to update order status')
     } finally {
@@ -135,11 +135,11 @@ export default function AdminDashboard() {
       case 'ready':
         return 'bg-green-100 text-green-800'
       case 'delivered':
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-slate-100 text-slate-800'
       case 'cancelled':
         return 'bg-red-100 text-red-800'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-slate-100 text-slate-800'
     }
   }
 
@@ -199,56 +199,56 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading orders...</p>
+          <p className="text-slate-700 font-medium">Loading orders...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Order Management</h1>
-          <p className="text-gray-600">Manage incoming orders and update their status</p>
+          <h1 className="text-2xl font-bold text-slate-900">Order Management</h1>
+          <p className="text-slate-700 font-medium">Manage incoming orders and update their status</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={toggleSound}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
               soundEnabled 
                 ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
             title={`Sound notifications ${soundEnabled ? 'enabled' : 'disabled'}`}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            {soundEnabled ? 'Sound On' : 'Sound Off'}
+            <span className="hidden sm:inline">{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
           </button>
           <button
             onClick={fetchOrders}
-            className="flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+            className="flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors font-medium"
           >
             <RefreshCw className="w-4 h-4" />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         {['pending', 'preparing', 'ready', 'cancelled'].map((status) => {
           const count = orders.filter(order => order.status === status).length
           return (
-            <div key={status} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div key={status} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${getStatusColor(status)}`}>
                   {getStatusIcon(status)}
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">{count}</p>
-                  <p className="text-sm text-gray-600 capitalize">{status}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xl md:text-2xl font-bold text-slate-900">{count}</p>
+                  <p className="text-xs md:text-sm text-slate-600 font-medium capitalize truncate">{status}</p>
                 </div>
               </div>
             </div>
@@ -259,31 +259,31 @@ export default function AdminDashboard() {
       {/* Orders List */}
       <div className="space-y-4">
         {orders.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-            <Coffee className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No active orders</h3>
-            <p className="text-gray-600">New orders will appear here when customers place them</p>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 md:p-12 text-center">
+            <Coffee className="w-12 md:w-16 h-12 md:h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">No active orders</h3>
+            <p className="text-slate-600 font-medium">New orders will appear here when customers place them</p>
           </div>
         ) : (
           orders.map((order) => (
-            <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
               {/* Order Header */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <div className="flex items-center gap-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg font-semibold text-slate-900">
                       Order #{order.id}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-slate-600 font-medium">
                       Table {order.tables.table_number} • {new Date(order.created_at).toLocaleString('id-ID')}
                     </p>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusColor(order.status)} whitespace-nowrap`}>
                     {getStatusIcon(order.status)}
                     <span className="capitalize">{order.status}</span>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <p className="text-xl font-bold text-amber-600">
                     {formatPrice(order.total_amount)}
                   </p>
@@ -293,10 +293,10 @@ export default function AdminDashboard() {
               {/* Order Items */}
               <div className="space-y-3 mb-4">
                 {order.order_items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{item.menus.name}</h4>
-                      <p className="text-sm text-gray-600">
+                  <div key={item.id} className="flex justify-between items-start py-2 border-b border-gray-100 last:border-b-0 gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-slate-900">{item.menus.name}</h4>
+                      <p className="text-sm text-slate-600 font-medium">
                         {formatPrice(item.price)} × {item.quantity}
                       </p>
                       {item.special_notes && (
@@ -306,7 +306,7 @@ export default function AdminDashboard() {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-bold text-slate-900">
                         {formatPrice(item.price * item.quantity)}
                       </p>
                     </div>
@@ -317,18 +317,18 @@ export default function AdminDashboard() {
               {/* Special Notes */}
               {order.special_notes && (
                 <div className="mb-4 p-3 bg-amber-50 rounded-lg">
-                  <h4 className="font-medium text-amber-800 mb-1">Order Notes:</h4>
+                  <h4 className="font-semibold text-amber-800 mb-1">Order Notes:</h4>
                   <p className="text-amber-700">{order.special_notes}</p>
                 </div>
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 {getNextStatus(order.status) && (
                   <button
                     onClick={() => updateOrderStatus(order.id, getNextStatus(order.status)!)}
                     disabled={updatingStatus === order.id}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
                   >
                     {updatingStatus === order.id ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -343,7 +343,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => updateOrderStatus(order.id, 'cancelled')}
                     disabled={updatingStatus === order.id}
-                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
                   >
                     <AlertCircle className="w-4 h-4" />
                     Cancel Order

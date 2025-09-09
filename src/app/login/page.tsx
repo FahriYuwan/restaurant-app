@@ -28,72 +28,73 @@ export default function LoginPage() {
         toast.success('Login berhasil!')
         router.push('/admin')
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Terjadi kesalahan saat login')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat login'
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className=\"min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4\">
-      <div className=\"bg-white rounded-2xl shadow-xl p-8 w-full max-w-md\">
-        <div className=\"text-center mb-8\">
-          <div className=\"inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4\">
-            <Coffee className=\"w-8 h-8 text-amber-600\" />
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
+            <Coffee className="w-8 h-8 text-amber-600" />
           </div>
-          <h1 className=\"text-2xl font-bold text-gray-900\">Admin Login</h1>
-          <p className=\"text-gray-600 mt-2\">Masuk ke dashboard barista</p>
+          <h1 className="text-2xl font-bold text-slate-900">Admin Login</h1>
+          <p className="text-slate-700 font-medium mt-2">Masuk ke dashboard barista</p>
         </div>
 
-        <form onSubmit={handleLogin} className=\"space-y-6\">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor=\"email\" className=\"block text-sm font-medium text-gray-700 mb-2\">
+            <label htmlFor="email" className="block text-sm font-semibold text-slate-800 mb-2">
               Email
             </label>
-            <div className=\"relative\">
-              <Mail className=\"absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5\" />
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-5 h-5" />
               <input
-                id=\"email\"
-                type=\"email\"
+                id="email"
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className=\"w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent\"
-                placeholder=\"admin@cafe.com\"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-slate-900 placeholder:text-slate-500"
+                placeholder="admin@cafe.com"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor=\"password\" className=\"block text-sm font-medium text-gray-700 mb-2\">
+            <label htmlFor="password" className="block text-sm font-semibold text-slate-800 mb-2">
               Password
             </label>
-            <div className=\"relative\">
-              <Lock className=\"absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5\" />
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-5 h-5" />
               <input
-                id=\"password\"
-                type=\"password\"
+                id="password"
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className=\"w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent\"
-                placeholder=\"••••••••\"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-slate-900 placeholder:text-slate-500"
+                placeholder="••••••••"
                 required
               />
             </div>
           </div>
 
           <button
-            type=\"submit\"
+            type="submit"
             disabled={loading}
-            className=\"w-full bg-amber-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-amber-700 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors\"
+            className="w-full bg-amber-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-amber-700 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Memproses...' : 'Masuk'}
           </button>
         </form>
 
-        <div className=\"mt-6 text-center\">
-          <p className=\"text-sm text-gray-600\">
+        <div className="mt-6 text-center">
+          <p className="text-sm text-slate-700 font-medium">
             Demo credentials: admin@cafe.com / password123
           </p>
         </div>

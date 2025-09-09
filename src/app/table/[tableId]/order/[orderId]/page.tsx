@@ -66,7 +66,7 @@ export default function OrderStatusPage() {
         if (tableError) throw tableError
 
         setTable(tableData)
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching order data:', error)
         toast.error('Terjadi kesalahan saat memuat data pesanan')
       } finally {
@@ -183,10 +183,10 @@ export default function OrderStatusPage() {
 
   if (loading) {
     return (
-      <div className=\"min-h-screen bg-gray-50 flex items-center justify-center\">
-        <div className=\"text-center\">
-          <div className=\"animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4\"></div>
-          <p className=\"text-gray-600\">Memuat status pesanan...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+          <p className="text-slate-700 font-medium">Memuat status pesanan...</p>
         </div>
       </div>
     )
@@ -194,9 +194,9 @@ export default function OrderStatusPage() {
 
   if (!order) {
     return (
-      <div className=\"min-h-screen bg-gray-50 flex items-center justify-center\">
-        <div className=\"text-center\">
-          <p className=\"text-gray-600\">Pesanan tidak ditemukan</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-slate-700 font-medium">Pesanan tidak ditemukan</p>
         </div>
       </div>
     )
@@ -206,22 +206,22 @@ export default function OrderStatusPage() {
   const StatusIcon = statusInfo.icon
 
   return (
-    <div className=\"min-h-screen bg-gray-50\">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className=\"bg-white shadow-sm\">
-        <div className=\"px-4 py-4\">
-          <div className=\"flex items-center gap-3 mb-4\">
+      <div className="bg-white shadow-sm">
+        <div className="px-4 py-4">
+          <div className="flex items-center gap-3 mb-4">
             <button
               onClick={() => router.push(`/table/${tableId}`)}
-              className=\"p-2 hover:bg-gray-100 rounded-full transition-colors\"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <ArrowLeft className=\"w-6 h-6\" />
+              <ArrowLeft className="w-6 h-6 text-slate-600" />
             </button>
             <div>
-              <h1 className=\"text-xl font-bold text-gray-900\">
+              <h1 className="text-xl font-bold text-slate-900">
                 Status Pesanan #{order.id}
               </h1>
-              <p className=\"text-sm text-gray-600\">
+              <p className="text-sm text-slate-600 font-medium">
                 Meja {table?.table_number} • {new Date(order.created_at).toLocaleString('id-ID')}
               </p>
             </div>
@@ -229,37 +229,37 @@ export default function OrderStatusPage() {
         </div>
       </div>
 
-      <div className=\"px-4 py-6 space-y-6\">
+      <div className="px-4 py-6 space-y-6">
         {/* Status Card */}
-        <div className=\"bg-white rounded-2xl shadow-sm border border-gray-100 p-6\">
-          <div className=\"text-center\">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="text-center">
             <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${statusInfo.bgColor}`}>
               <StatusIcon className={`w-8 h-8 ${statusInfo.color}`} />
             </div>
-            <h2 className=\"text-2xl font-bold text-gray-900 mb-2\">{statusInfo.text}</h2>
-            <p className=\"text-gray-600\">{statusInfo.description}</p>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">{statusInfo.text}</h2>
+            <p className="text-slate-700 font-medium">{statusInfo.description}</p>
           </div>
         </div>
 
         {/* Order Items */}
-        <div className=\"bg-white rounded-2xl shadow-sm border border-gray-100 p-6\">
-          <h3 className=\"text-lg font-semibold text-gray-900 mb-4\">Detail Pesanan</h3>
-          <div className=\"space-y-4\">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Detail Pesanan</h3>
+          <div className="space-y-4">
             {orderItems.map((item) => (
-              <div key={item.id} className=\"flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0\">
-                <div className=\"flex-1\">
-                  <h4 className=\"font-medium text-gray-900\">{item.menus.name}</h4>
-                  <p className=\"text-sm text-gray-600\">
+              <div key={item.id} className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-slate-900">{item.menus.name}</h4>
+                  <p className="text-sm text-slate-600 font-medium">
                     {formatPrice(item.price)} × {item.quantity}
                   </p>
                   {item.special_notes && (
-                    <p className=\"text-sm text-amber-600 italic mt-1\">
+                    <p className="text-sm text-amber-600 italic mt-1">
                       Catatan: {item.special_notes}
                     </p>
                   )}
                 </div>
-                <div className=\"text-right\">
-                  <p className=\"font-semibold text-gray-900\">
+                <div className="text-right">
+                  <p className="font-bold text-slate-900">
                     {formatPrice(item.price * item.quantity)}
                   </p>
                 </div>
@@ -268,29 +268,29 @@ export default function OrderStatusPage() {
           </div>
 
           {order.special_notes && (
-            <div className=\"mt-4 p-4 bg-amber-50 rounded-lg\">
-              <h4 className=\"font-medium text-amber-800 mb-1\">Catatan Pesanan:</h4>
-              <p className=\"text-amber-700\">{order.special_notes}</p>
+            <div className="mt-4 p-4 bg-amber-50 rounded-lg">
+              <h4 className="font-medium text-amber-800 mb-1">Catatan Pesanan:</h4>
+              <p className="text-amber-700">{order.special_notes}</p>
             </div>
           )}
 
-          <div className=\"mt-6 pt-4 border-t border-gray-200\">
-            <div className=\"flex justify-between items-center\">
-              <span className=\"text-lg font-semibold text-gray-900\">Total:</span>
-              <span className=\"text-2xl font-bold text-amber-600\">
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-bold text-slate-900">Total:</span>
+              <span className="text-2xl font-bold text-amber-600">
                 {formatPrice(order.total_amount)}
               </span>
             </div>
-            <p className=\"text-sm text-gray-600 mt-1\">
+            <p className="text-sm text-slate-600 font-medium mt-1">
               Pembayaran dilakukan di kasir
             </p>
           </div>
         </div>
 
         {/* Progress Timeline */}
-        <div className=\"bg-white rounded-2xl shadow-sm border border-gray-100 p-6\">
-          <h3 className=\"text-lg font-semibold text-gray-900 mb-4\">Progress Pesanan</h3>
-          <div className=\"space-y-4\">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Progress Pesanan</h3>
+          <div className="space-y-4">
             {[
               { status: 'pending', label: 'Menunggu Konfirmasi' },
               { status: 'preparing', label: 'Sedang Diproses' },
@@ -305,13 +305,13 @@ export default function OrderStatusPage() {
               const isCurrent = order.status === step.status
               
               return (
-                <div key={step.status} className=\"flex items-center gap-3\">
+                <div key={step.status} className="flex items-center gap-3">
                   <div className={`w-4 h-4 rounded-full ${
                     isCompleted ? 'bg-green-500' : 
-                    isCurrent ? 'bg-amber-500' : 'bg-gray-300'
+                    isCurrent ? 'bg-amber-500' : 'bg-slate-300'
                   }`} />
                   <span className={`${
-                    isCompleted || isCurrent ? 'text-gray-900 font-medium' : 'text-gray-500'
+                    isCompleted || isCurrent ? 'text-slate-900 font-semibold' : 'text-slate-600 font-medium'
                   }`}>
                     {step.label}
                   </span>
@@ -322,17 +322,17 @@ export default function OrderStatusPage() {
         </div>
 
         {/* Actions */}
-        <div className=\"flex gap-3\">
+        <div className="flex gap-3">
           <button
             onClick={() => router.push(`/table/${tableId}`)}
-            className=\"flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium hover:bg-gray-200 transition-colors\"
+            className="flex-1 bg-slate-100 text-slate-700 py-3 px-4 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
           >
             Pesan Lagi
           </button>
           {order.status === 'delivered' && (
             <button
               onClick={() => router.push('/')}
-              className=\"flex-1 bg-amber-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-amber-700 transition-colors\"
+              className="flex-1 bg-amber-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-amber-700 transition-colors"
             >
               Selesai
             </button>
