@@ -1,0 +1,15 @@
+<!-- This is a placeholder. Replace with actual PNG icons -->
+<!-- Generate icons using tools like:
+     - https://realfavicongenerator.net/
+     - https://www.pwabuilder.com/imageGenerator
+     
+     Required sizes:
+     - icon-192x192.png
+     - icon-256x256.png  
+     - icon-384x384.png
+     - icon-512x512.png
+     
+     The icons should feature a coffee cup or cafe-related imagery
+     with the brown/amber theme color (#D97706) -->
+
+<!-- For now, you can create simple colored squares or use online generators -->
