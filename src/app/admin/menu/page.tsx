@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Edit, Trash2, Image as ImageIcon, Save, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { updateMenu, insertMenu } from '@/lib/supabase-helpers'
 import { Database } from '@/lib/database.types'
 import toast from 'react-hot-toast'
 
@@ -16,6 +17,27 @@ interface MenuFormData {
   stock_quantity: number | null
   is_available: boolean
   image_url: string
+}
+
+interface MenuUpdateData {
+  name?: string;
+  description?: string | null;
+  price?: number;
+  category?: string;
+  stock_quantity?: number | null;
+  is_available?: boolean;
+  image_url?: string | null;
+  updated_at?: string;
+}
+
+interface MenuInsertData {
+  name: string;
+  description?: string | null;
+  price: number;
+  category: string;
+  stock_quantity?: number | null;
+  is_available?: boolean;
+  image_url?: string | null;
 }
 
 export default function MenuManagement() {
@@ -101,35 +123,32 @@ export default function MenuManagement() {
     try {
       if (editingMenu) {
         // Update existing menu
-        const { error } = await supabase
-          .from('menus')
-          .update({
-            name: formData.name.trim(),
-            description: formData.description.trim() || null,
-            price: formData.price,
-            category: formData.category,
-            stock_quantity: formData.stock_quantity,
-            is_available: formData.is_available,
-            image_url: formData.image_url.trim() || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingMenu.id)
+        const updatePayload: MenuUpdateData = {
+          name: formData.name.trim(),
+          description: formData.description.trim() || null,
+          price: formData.price,
+          category: formData.category,
+          stock_quantity: formData.stock_quantity,
+          is_available: formData.is_available,
+          image_url: formData.image_url.trim() || null,
+          updated_at: new Date().toISOString()
+        }
+        const { error } = await updateMenu(editingMenu.id, updatePayload)
 
         if (error) throw error
         toast.success('Menu updated successfully')
       } else {
         // Create new menu
-        const { error } = await supabase
-          .from('menus')
-          .insert({
-            name: formData.name.trim(),
-            description: formData.description.trim() || null,
-            price: formData.price,
-            category: formData.category,
-            stock_quantity: formData.stock_quantity,
-            is_available: formData.is_available,
-            image_url: formData.image_url.trim() || null
-          })
+        const insertPayload: MenuInsertData = {
+          name: formData.name.trim(),
+          description: formData.description.trim() || null,
+          price: formData.price,
+          category: formData.category,
+          stock_quantity: formData.stock_quantity,
+          is_available: formData.is_available,
+          image_url: formData.image_url.trim() || null
+        }
+        const { error } = await insertMenu(insertPayload)
 
         if (error) throw error
         toast.success('Menu created successfully')

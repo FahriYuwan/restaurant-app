@@ -40,8 +40,9 @@ export default function MenuItem({ menu }: MenuItemProps) {
 
         if (error) throw error
         
-        if (currentMenu.stock_quantity < quantity) {
-          toast.error(`Stok ${menu.name} tidak mencukupi. Tersisa: ${currentMenu.stock_quantity}`)
+        const menuData = currentMenu as { stock_quantity: number | null }
+        if (menuData.stock_quantity !== null && menuData.stock_quantity < quantity) {
+          toast.error(`Stok ${menu.name} tidak mencukupi. Tersisa: ${menuData.stock_quantity}`)
           return
         }
       } catch (error) {

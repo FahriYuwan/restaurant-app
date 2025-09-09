@@ -51,10 +51,12 @@ export default function ReportsPage() {
         .neq('status', 'cancelled')
 
       if (ordersError) throw ordersError
+      
+      const ordersData = (orders || []) as Order[]
 
       // Calculate daily stats
-      const totalOrders = orders.length
-      const totalRevenue = orders.reduce((sum, order) => sum + order.total_amount, 0)
+      const totalOrders = ordersData.length
+      const totalRevenue = ordersData.reduce((sum, order) => sum + order.total_amount, 0)
       const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
 
       setDailyStats({
@@ -65,7 +67,7 @@ export default function ReportsPage() {
       })
 
       // Fetch order items with menu details for popular items
-      const orderIds = orders.map(order => order.id)
+      const orderIds = ordersData.map(order => order.id)
       if (orderIds.length > 0) {
         const { data: orderItems, error: itemsError } = await supabase
           .from('order_items')
@@ -76,11 +78,13 @@ export default function ReportsPage() {
           .in('order_id', orderIds)
 
         if (itemsError) throw itemsError
+        
+        const itemsData = (orderItems || []) as OrderItem[]
 
         // Group items by menu and calculate stats
         const itemStats: { [key: string]: PopularItem } = {}
         
-        orderItems.forEach((item: OrderItem) => {
+        itemsData.forEach((item: OrderItem) => {
           const menuName = item.menus.name
           if (!itemStats[menuName]) {
             itemStats[menuName] = {

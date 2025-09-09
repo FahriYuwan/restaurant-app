@@ -3,11 +3,18 @@
 import { useState, useEffect } from 'react'
 import { Download, QrCode, Printer, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { insertTable } from '@/lib/supabase-helpers'
 import { generateTableQRCode, generateTableQRCodeSVG } from '@/lib/qr-generator'
 import { Database } from '@/lib/database.types'
 import toast from 'react-hot-toast'
 
 type Table = Database['public']['Tables']['tables']['Row']
+
+interface TableInsertData {
+  table_number: number;
+  qr_code: string;
+  is_active?: boolean;
+}
 
 export default function QRCodeManager() {
   const [tables, setTables] = useState<Table[]>([])
@@ -52,15 +59,12 @@ export default function QRCodeManager() {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
       const qrCode = `table_${tableNumber}_${Date.now()}`
 
-      const { data, error } = await supabase
-        .from('tables')
-        .insert([{
-          table_number: tableNumber,
-          qr_code: qrCode,
-          is_active: true
-        }] as any)
-        .select()
-        .single()
+      const insertPayload: TableInsertData = {
+        table_number: tableNumber,
+        qr_code: qrCode,
+        is_active: true
+      }
+      const { data, error } = await insertTable(insertPayload)
 
       if (error) {
         if (error.code === '23505') { // Unique violation

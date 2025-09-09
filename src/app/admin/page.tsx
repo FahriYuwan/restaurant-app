@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Clock, CheckCircle, Coffee, Utensils, AlertCircle, RefreshCw, Volume2, VolumeX } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { updateOrder } from '@/lib/supabase-helpers'
 import { Database } from '@/lib/database.types'
 import { notificationSound } from '@/lib/notification-sound'
 import toast from 'react-hot-toast'
@@ -12,6 +13,11 @@ type Order = Database['public']['Tables']['orders']['Row'] & {
   order_items: (Database['public']['Tables']['order_items']['Row'] & {
     menus: Database['public']['Tables']['menus']['Row']
   })[]
+}
+
+interface OrderUpdateData {
+  status?: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  updated_at?: string;
 }
 
 export default function AdminDashboard() {
@@ -91,13 +97,11 @@ export default function AdminDashboard() {
   const updateOrderStatus = async (orderId: number, newStatus: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled') => {
     setUpdatingStatus(orderId)
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        } as any)
-        .eq('id', orderId)
+      const updatePayload: OrderUpdateData = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await updateOrder(orderId, updatePayload)
 
       if (error) throw error
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { X, Minus, Plus, ShoppingCart, MessageSquare } from 'lucide-react'
 import { useCart } from './CartContext'
 import { supabase } from '@/lib/supabase'
+import { insertOrder, insertOrderItems, updateMenu } from '@/lib/supabase-helpers'
 import toast from 'react-hot-toast'
 
 interface CartProps {
@@ -63,52 +64,46 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
 
           if (stockError) throw stockError
           
-          if (currentMenu.stock_quantity < item.quantity) {
-            toast.error(`Stok ${item.menu.name} tidak mencukupi. Tersisa: ${currentMenu.stock_quantity}`)
+          const menuData = currentMenu as { stock_quantity: number | null }
+          if (menuData.stock_quantity !== null && menuData.stock_quantity < item.quantity) {
+            toast.error(`Stok ${item.menu.name} tidak mencukupi. Tersisa: ${menuData.stock_quantity}`)
             return
           }
         }
       }
 
       // Create order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          table_id: tableId,
-          total_amount: state.total,
-          special_notes: orderNotes || null,
-          status: 'pending'
-        })
-        .select()
-        .single()
+      const { data: order, error: orderError } = await insertOrder({
+        table_id: tableId,
+        total_amount: state.total,
+        special_notes: orderNotes || null,
+        status: 'pending'
+      })
 
       if (orderError) throw orderError
+      
+      const orderData = order as { id: number }
 
       // Create order items
       const orderItems = state.items.map(item => ({
-        order_id: order.id,
+        order_id: orderData.id,
         menu_id: item.menu.id,
         quantity: item.quantity,
         price: item.menu.price,
         special_notes: item.specialNotes || null
       }))
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems)
+      const { error: itemsError } = await insertOrderItems(orderItems)
 
       if (itemsError) throw itemsError
 
       // Update stock quantities
       for (const item of state.items) {
         if (item.menu.stock_quantity !== null) {
-          const { error: stockUpdateError } = await supabase
-            .from('menus')
-            .update({
-              stock_quantity: item.menu.stock_quantity - item.quantity,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', item.menu.id)
+          const { error: stockUpdateError } = await updateMenu(item.menu.id, {
+            stock_quantity: item.menu.stock_quantity - item.quantity,
+            updated_at: new Date().toISOString()
+          })
 
           if (stockUpdateError) {
             console.error('Error updating stock:', stockUpdateError)
@@ -123,7 +118,7 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
       onClose()
       
       // Redirect to order status page
-      window.location.href = `/table/${tableId}/order/${order.id}`
+      window.location.href = `/table/${tableId}/order/${orderData.id}`
     } catch (error: unknown) {
       console.error('Error submitting order:', error)
       toast.error('Gagal mengirim pesanan. Silakan coba lagi.')

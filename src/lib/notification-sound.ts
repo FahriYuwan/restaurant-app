@@ -12,7 +12,7 @@ export class NotificationSound {
   private setupAudioContext() {
     const initAudio = () => {
       if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+        this.audioContext = new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
       }
       document.removeEventListener('click', initAudio)
       document.removeEventListener('touchstart', initAudio)
