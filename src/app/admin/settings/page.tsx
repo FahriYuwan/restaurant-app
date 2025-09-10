@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Save, Bell, Coffee, Settings as SettingsIcon } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 export default function SettingsPage() {

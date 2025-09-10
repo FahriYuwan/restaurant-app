@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CalendarDays, TrendingUp, Coffee, DollarSign, Download } from 'lucide-react'
+import { TrendingUp, Coffee, DollarSign, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/database.types'
 import toast from 'react-hot-toast'

@@ -7,8 +7,22 @@ export default function DebugPage() {
   const [connectionStatus, setConnectionStatus] = useState<string>('Checking...')
   const [tableCount, setTableCount] = useState<number>(0)
   const [menuCount, setMenuCount] = useState<number>(0)
-  const [tables, setTables] = useState<any[]>([])
-  const [menus, setMenus] = useState<any[]>([])
+  const [tables, setTables] = useState<Array<{
+    id: number;
+    table_number: number;
+    qr_code: string;
+    is_active: boolean;
+    created_at: string;
+  }>>([])  
+  const [menus, setMenus] = useState<Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    price: number;
+    category: string;
+    is_available: boolean;
+    stock_quantity: number | null;
+  }>>([])
   const [errors, setErrors] = useState<string[]>([])
 
   useEffect(() => {
