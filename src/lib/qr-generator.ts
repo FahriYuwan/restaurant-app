@@ -33,9 +33,14 @@ export const generateQRCode = async (
 
 export const generateTableQRCode = async (
   tableNumber: number,
-  baseUrl: string = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3001'
+  baseUrl: string = process.env.NEXT_PUBLIC_APP_URL || 
+                   (typeof window !== 'undefined' && process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
+                   'http://localhost:3001'
 ): Promise<string> => {
+  console.log('Generating QR code with base URL:', baseUrl)
   const tableUrl = `${baseUrl}/table/${tableNumber}`
+  console.log('Table URL:', tableUrl)
+  
   return generateQRCode(tableUrl, {
     width: 300,
     margin: 3,
@@ -48,9 +53,13 @@ export const generateTableQRCode = async (
 
 export const generateTableQRCodeSVG = async (
   tableNumber: number,
-  baseUrl: string = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3001'
+  baseUrl: string = process.env.NEXT_PUBLIC_APP_URL || 
+                   (typeof window !== 'undefined' && process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
+                   'http://localhost:3001'
 ): Promise<string> => {
+  console.log('Generating QR SVG with base URL:', baseUrl)
   const tableUrl = `${baseUrl}/table/${tableNumber}`
+  console.log('Table URL:', tableUrl)
   
   try {
     return await QRCode.toString(tableUrl, {

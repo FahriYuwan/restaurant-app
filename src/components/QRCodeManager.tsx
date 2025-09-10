@@ -21,6 +21,7 @@ export default function QRCodeManager() {
   const [loading, setLoading] = useState(true)
   const [generatingQR, setGeneratingQR] = useState<number | null>(null)
   const [newTableNumber, setNewTableNumber] = useState('')
+  const [regeneratingAll, setRegeneratingAll] = useState(false)
 
   useEffect(() => {
     fetchTables()
@@ -56,7 +57,13 @@ export default function QRCodeManager() {
     }
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      // Use production URL for QR codes
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                     `https://${process.env.VERCEL_URL}` || 
+                     'http://localhost:3001'
+      
+      console.log('Creating QR code with base URL:', baseUrl)
+      
       const qrCode = `table_${tableNumber}_${Date.now()}`
 
       const insertPayload: TableInsertData = {
@@ -102,6 +109,57 @@ export default function QRCodeManager() {
     } catch (error: unknown) {
       console.error('Error deleting table:', error)
       toast.error('Failed to delete table')
+    }
+  }
+
+  const regenerateAllQRCodes = async () => {
+    if (!confirm('This will regenerate QR codes for all tables with the current production URL. Continue?')) {
+      return
+    }
+
+    setRegeneratingAll(true)
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                     `https://${process.env.VERCEL_URL}` || 
+                     'http://localhost:3001'
+      
+      console.log('Regenerating all QR codes with base URL:', baseUrl)
+      
+      let successCount = 0
+      
+      for (const table of tables) {
+        try {
+          const newQrCode = `table_${table.table_number}_${Date.now()}`
+          
+          const { error } = await supabase
+            .from('tables')
+            .update({ qr_code: newQrCode })
+            .eq('id', table.id)
+          
+          if (error) {
+            console.error(`Error updating table ${table.table_number}:`, error)
+          } else {
+            successCount++
+          }
+        } catch (error) {
+          console.error(`Error processing table ${table.table_number}:`, error)
+        }
+      }
+      
+      if (successCount === tables.length) {
+        toast.success(`Successfully regenerated ${successCount} QR codes`)
+      } else {
+        toast.success(`Regenerated ${successCount}/${tables.length} QR codes`)
+      }
+      
+      // Refresh the table list
+      await fetchTables()
+      
+    } catch (error) {
+      console.error('Error regenerating QR codes:', error)
+      toast.error('Failed to regenerate QR codes')
+    } finally {
+      setRegeneratingAll(false)
     }
   }
 
@@ -237,6 +295,17 @@ export default function QRCodeManager() {
           <h2 className="text-2xl font-bold text-slate-900">QR Code Management</h2>
           <p className="text-slate-700 font-medium">Generate and manage QR codes for tables</p>
         </div>
+        
+        {tables.length > 0 && (
+          <button
+            onClick={regenerateAllQRCodes}
+            disabled={regeneratingAll}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium"
+          >
+            <QrCode className="w-4 h-4" />
+            {regeneratingAll ? 'Regenerating...' : 'Regenerate All QR Codes'}
+          </button>
+        )}
       </div>
 
       {/* Add New Table */}
