@@ -52,5 +52,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: [
+    // Only apply middleware to admin routes
+    '/admin/:path*'
+    // Explicitly exclude all other routes including table routes
+  ]
 }

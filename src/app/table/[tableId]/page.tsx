@@ -10,9 +10,6 @@ import MenuItem from '@/components/MenuItem'
 import Cart from '@/components/Cart'
 import toast from 'react-hot-toast'
 
-// Force dynamic rendering for this page
-export const dynamic = 'force-dynamic'
-
 type Menu = Database['public']['Tables']['menus']['Row']
 type Table = Database['public']['Tables']['tables']['Row']
 
