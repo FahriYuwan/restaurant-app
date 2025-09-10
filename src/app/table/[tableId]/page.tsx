@@ -30,6 +30,9 @@ function TableOrderingContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Fetching data for table ID:', tableId)
+        console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+        
         // Fetch table info
         const { data: tableData, error: tableError } = await supabase
           .from('tables')
@@ -38,9 +41,12 @@ function TableOrderingContent() {
           .eq('is_active', true)
           .single()
 
+        console.log('Table query result:', { tableData, tableError })
+
         if (tableError || !tableData) {
-          toast.error('Meja tidak ditemukan')
-          router.push('/')
+          console.error('Table not found or error:', tableError)
+          toast.error('Meja tidak ditemukan atau database tidak terhubung')
+          // Don't redirect immediately, let user see the error
           return
         }
 
@@ -54,9 +60,19 @@ function TableOrderingContent() {
           .order('category')
           .order('name')
 
-        if (menuError) throw menuError
+        console.log('Menu query result:', { menuData, menuError })
+
+        if (menuError) {
+          console.error('Menu fetch error:', menuError)
+          toast.error('Gagal memuat menu: ' + menuError.message)
+          return
+        }
 
         setMenus(menuData || [])
+        
+        if (!menuData || menuData.length === 0) {
+          toast.error('Tidak ada menu yang tersedia')
+        }
       } catch (error: unknown) {
         console.error('Error fetching data:', error)
         toast.error('Terjadi kesalahan saat memuat data')
@@ -98,6 +114,28 @@ function TableOrderingContent() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
           <p className="text-slate-700 font-medium">Memuat menu...</p>
+          <p className="text-slate-500 text-sm mt-2">Menghubungkan ke database...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if no table found
+  if (!loading && !table) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">Meja Tidak Ditemukan</h2>
+          <p className="text-slate-700 font-medium mb-6">
+            Meja dengan nomor {tableId} tidak tersedia atau sedang tidak aktif.
+          </p>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-amber-600 text-white px-6 py-3 rounded-lg hover:bg-amber-700 transition-colors font-medium"
+          >
+            Kembali ke Beranda
+          </button>
         </div>
       </div>
     )
@@ -173,12 +211,30 @@ function TableOrderingContent() {
         {filteredMenus.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
-              <Filter className="w-16 h-16 mx-auto" />
+              {menus.length === 0 ? (
+                <>
+                  <div className="text-6xl mb-4">🍽️</div>
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">Menu Belum Tersedia</h3>
+                  <p className="text-slate-700 font-medium mb-4">
+                    Sepertinya menu belum diatur atau database tidak terhubung.
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors font-medium"
+                  >
+                    Muat Ulang
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Filter className="w-16 h-16 mx-auto" />
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">Menu tidak ditemukan</h3>
+                  <p className="text-slate-700 font-medium">
+                    Coba ubah kata kunci pencarian atau filter kategori
+                  </p>
+                </>
+              )}
             </div>
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Menu tidak ditemukan</h3>
-            <p className="text-slate-700 font-medium">
-              Coba ubah kata kunci pencarian atau filter kategori
-            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
