@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { X, Minus, Plus, ShoppingCart, MessageSquare } from 'lucide-react'
 import { useCart } from './CartContext'
 import { supabase } from '@/lib/supabase'
-import { insertOrder, insertOrderItems, updateMenu } from '@/lib/supabase-helpers'
+import { insertOrder, insertOrderItems, updateMenuStock } from '@/lib/supabase-helpers'
 import toast from 'react-hot-toast'
 
 interface CartProps {
@@ -53,26 +53,35 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
 
     setIsSubmitting(true)
     try {
-      // Check stock availability first
+      console.log('Starting order submission process...')
+      
+      // Step 1: Check stock availability first
+      console.log('Checking stock availability...')
       for (const item of state.items) {
         if (item.menu.stock_quantity !== null) {
           const { data: currentMenu, error: stockError } = await supabase
             .from('menus')
-            .select('stock_quantity')
+            .select('stock_quantity, name')
             .eq('id', item.menu.id)
             .single()
 
-          if (stockError) throw stockError
+          if (stockError) {
+            console.error('Stock check error:', stockError)
+            throw stockError
+          }
           
-          const menuData = currentMenu as { stock_quantity: number | null }
+          const menuData = currentMenu as { stock_quantity: number | null; name: string }
+          console.log(`Stock check for ${menuData.name}: available=${menuData.stock_quantity}, requested=${item.quantity}`)
+          
           if (menuData.stock_quantity !== null && menuData.stock_quantity < item.quantity) {
-            toast.error(`Stok ${item.menu.name} tidak mencukupi. Tersisa: ${menuData.stock_quantity}`)
+            toast.error(`Stok ${menuData.name} tidak mencukupi. Tersisa: ${menuData.stock_quantity}`)
             return
           }
         }
       }
 
-      // Create order
+      // Step 2: Create order
+      console.log('Creating order...')
       const { data: order, error: orderError } = await insertOrder({
         table_id: tableId,
         total_amount: state.total,
@@ -80,11 +89,16 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
         status: 'pending'
       })
 
-      if (orderError) throw orderError
+      if (orderError) {
+        console.error('Order creation error:', orderError)
+        throw orderError
+      }
       
       const orderData = order as { id: number }
+      console.log('Order created with ID:', orderData.id)
 
-      // Create order items
+      // Step 3: Create order items
+      console.log('Creating order items...')
       const orderItems = state.items.map(item => ({
         order_id: orderData.id,
         menu_id: item.menu.id,
@@ -95,42 +109,66 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
 
       const { error: itemsError } = await insertOrderItems(orderItems)
 
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error('Order items creation error:', itemsError)
+        throw itemsError
+      }
+      console.log('Order items created successfully')
 
-      // Update stock quantities
+      // Step 4: Update stock quantities using secure database function
+      console.log('Updating stock quantities...')
+      const stockUpdateErrors: string[] = []
+      
       for (const item of state.items) {
         if (item.menu.stock_quantity !== null) {
-          const newStockQuantity = Math.max(0, item.menu.stock_quantity - item.quantity)
-          
           try {
-            const { error: stockUpdateError } = await updateMenu(item.menu.id, {
-              stock_quantity: newStockQuantity,
-              updated_at: new Date().toISOString()
-            })
+            console.log(`Updating stock for ${item.menu.name}: subtracting ${item.quantity} from ${item.menu.stock_quantity}`)
+            
+            const { data: stockResult, error: stockUpdateError } = await updateMenuStock(item.menu.id, item.quantity)
 
             if (stockUpdateError) {
-              console.error('Error updating stock for item:', item.menu.name, stockUpdateError)
-              toast.error(`Failed to update stock for ${item.menu.name}`)
+              console.error('Stock update error for item:', item.menu.name, stockUpdateError)
+              const errorMsg = stockUpdateError instanceof Error ? stockUpdateError.message : String(stockUpdateError)
+              stockUpdateErrors.push(`${item.menu.name}: ${errorMsg}`)
+            } else if (stockResult && stockResult.success) {
+              console.log(`✅ Stock updated successfully for ${item.menu.name}: ${stockResult.old_stock} -> ${stockResult.new_stock}`)
+            } else if (stockResult && !stockResult.success) {
+              console.error('Stock update failed:', item.menu.name, stockResult.error)
+              stockUpdateErrors.push(`${item.menu.name}: ${stockResult.error || 'Unknown error'}`)
             } else {
-              console.log(`Stock updated for ${item.menu.name}: ${item.menu.stock_quantity} -> ${newStockQuantity}`)
+              console.error('Stock update returned unexpected result:', item.menu.name, stockResult)
+              stockUpdateErrors.push(`${item.menu.name}: Unexpected response format`)
             }
           } catch (stockError) {
             console.error('Stock update exception:', stockError)
-            toast.error(`Stock update failed for ${item.menu.name}`)
+            const errorMsg = stockError instanceof Error ? stockError.message : String(stockError)
+            stockUpdateErrors.push(`${item.menu.name}: ${errorMsg}`)
           }
         }
       }
 
-      toast.success('Pesanan berhasil dikirim!')
+      // Show stock update errors but don't fail the entire order
+      if (stockUpdateErrors.length > 0) {
+        console.warn('Some stock updates failed:', stockUpdateErrors)
+        toast.error('Pesanan berhasil, tetapi ada masalah dengan update stok. Silakan hubungi admin.')
+      } else {
+        console.log('✅ All stock updates completed successfully')
+        toast.success('Pesanan berhasil dikirim!')
+      }
+
+      // Clear cart and redirect
       dispatch({ type: 'CLEAR_CART' })
       setOrderNotes('')
       onClose()
       
       // Redirect to order status page
+      console.log('Redirecting to order status page...')
       window.location.href = `/table/${tableId}/order/${orderData.id}`
+      
     } catch (error: unknown) {
       console.error('Error submitting order:', error)
-      toast.error('Gagal mengirim pesanan. Silakan coba lagi.')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Gagal mengirim pesanan: ${errorMessage}`)
     } finally {
       setIsSubmitting(false)
     }
