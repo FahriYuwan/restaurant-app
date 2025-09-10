@@ -100,14 +100,23 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
       // Update stock quantities
       for (const item of state.items) {
         if (item.menu.stock_quantity !== null) {
-          const { error: stockUpdateError } = await updateMenu(item.menu.id, {
-            stock_quantity: item.menu.stock_quantity - item.quantity,
-            updated_at: new Date().toISOString()
-          })
+          const newStockQuantity = Math.max(0, item.menu.stock_quantity - item.quantity)
+          
+          try {
+            const { error: stockUpdateError } = await updateMenu(item.menu.id, {
+              stock_quantity: newStockQuantity,
+              updated_at: new Date().toISOString()
+            })
 
-          if (stockUpdateError) {
-            console.error('Error updating stock:', stockUpdateError)
-            // Don't throw error here to avoid blocking the order, just log it
+            if (stockUpdateError) {
+              console.error('Error updating stock for item:', item.menu.name, stockUpdateError)
+              toast.error(`Failed to update stock for ${item.menu.name}`)
+            } else {
+              console.log(`Stock updated for ${item.menu.name}: ${item.menu.stock_quantity} -> ${newStockQuantity}`)
+            }
+          } catch (stockError) {
+            console.error('Stock update exception:', stockError)
+            toast.error(`Stock update failed for ${item.menu.name}`)
           }
         }
       }

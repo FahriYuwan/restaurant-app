@@ -14,10 +14,19 @@ export const updateMenu = async (id: number, data: {
   image_url?: string | null;
   updated_at?: string;
 }) => {
-  return await (supabase as AnySupabase)
-    .from('menus')
-    .update(data)
-    .eq('id', id)
+  try {
+    console.log(`Updating menu ${id} with data:`, data)
+    const result = await (supabase as AnySupabase)
+      .from('menus')
+      .update(data)
+      .eq('id', id)
+    
+    console.log(`Update result for menu ${id}:`, result)
+    return result
+  } catch (error) {
+    console.error(`Error updating menu ${id}:`, error)
+    throw error
+  }
 }
 
 export const insertMenu = async (data: {

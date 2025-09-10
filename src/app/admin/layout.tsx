@@ -65,23 +65,53 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     
     setPendingOrders(count || 0)
 
-    // Subscribe to changes
+    // Subscribe to changes with better error handling
     const subscription = supabase
-      .channel('pending_orders')
+      .channel('pending_orders_notifications')
       .on('postgres_changes', 
         { 
           event: '*', 
           schema: 'public', 
-          table: 'orders',
-          filter: 'status=eq.pending'
+          table: 'orders'
         }, 
-        () => {
+        async (payload) => {
+          console.log('Order change detected:', payload)
+          
           // Refetch count when orders change
-          supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'pending')
-            .then(({ count }) => setPendingOrders(count || 0))
+          try {
+            const { count: newCount } = await supabase
+              .from('orders')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'pending')
+            
+            const pendingCount = newCount || 0
+            setPendingOrders(pendingCount)
+            
+            // Show notification for new orders
+            if (payload.eventType === 'INSERT' && payload.new?.status === 'pending') {
+              // Play simple notification sound using Web Audio API
+              try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+                const oscillator = audioContext.createOscillator()
+                const gainNode = audioContext.createGain()
+                
+                oscillator.connect(gainNode)
+                gainNode.connect(audioContext.destination)
+                
+                oscillator.frequency.value = 800
+                oscillator.type = 'sine'
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+                
+                oscillator.start(audioContext.currentTime)
+                oscillator.stop(audioContext.currentTime + 0.5)
+              } catch (e) {
+                console.log('Could not play notification sound')
+              }
+            }
+          } catch (error) {
+            console.error('Error updating pending orders count:', error)
+          }
         }
       )
       .subscribe()
@@ -227,14 +257,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             
             <div className="flex items-center gap-3">
               {pendingOrders > 0 && (
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors font-medium"
+                <button
+                  onClick={() => router.push('/admin')}
+                  className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors font-medium cursor-pointer"
                 >
                   <Bell className="w-4 h-4" />
                   <span className="text-sm hidden sm:inline">{pendingOrders} new orders</span>
                   <span className="text-sm sm:hidden">{pendingOrders}</span>
-                </Link>
+                </button>
               )}
             </div>
           </div>
