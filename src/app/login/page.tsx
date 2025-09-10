@@ -26,7 +26,12 @@ export default function LoginPage() {
 
       if (data.user) {
         toast.success('Login berhasil!')
-        router.push('/admin')
+        
+        // Wait for session to be established
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // Use window.location for reliable redirect in production
+        window.location.href = '/admin'
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat login'

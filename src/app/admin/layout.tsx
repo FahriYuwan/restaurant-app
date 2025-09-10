@@ -38,8 +38,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const checkUser = async () => {
     try {
+      // First, try to refresh the session
+      await supabase.auth.refreshSession()
+      
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
+        console.log('No user found, redirecting to login')
         router.push('/login')
         return
       }
