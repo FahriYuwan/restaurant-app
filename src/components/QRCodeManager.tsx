@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Download, QrCode, Printer, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { insertTable } from '@/lib/supabase-helpers'
+import { insertTable, updateTable } from '@/lib/supabase-helpers'
 import { generateTableQRCode, generateTableQRCodeSVG } from '@/lib/qr-generator'
 import { Database } from '@/lib/database.types'
 import toast from 'react-hot-toast'
@@ -131,10 +131,9 @@ export default function QRCodeManager() {
         try {
           const newQrCode = `table_${table.table_number}_${Date.now()}`
           
-          const { error } = await supabase
-            .from('tables')
-            .update({ qr_code: newQrCode })
-            .eq('id', table.id)
+          const { error } = await updateTable(table.id, {
+            qr_code: newQrCode
+          })
           
           if (error) {
             console.error(`Error updating table ${table.table_number}:`, error)

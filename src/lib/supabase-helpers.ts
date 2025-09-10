@@ -65,6 +65,17 @@ export const insertTable = async (data: {
     .single()
 }
 
+export const updateTable = async (id: number, data: {
+  qr_code?: string;
+  is_active?: boolean;
+  updated_at?: string;
+}) => {
+  return await (supabase as AnySupabase)
+    .from('tables')
+    .update(data)
+    .eq('id', id)
+}
+
 export const insertOrder = async (data: {
   table_id: number;
   total_amount: number;

@@ -34,7 +34,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     checkUser()
     subscribeToPendingOrders()
-  }, [])
+  }, []) // checkUser and subscribeToPendingOrders are stable functions
 
   const checkUser = async () => {
     try {
@@ -91,21 +91,29 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             if (payload.eventType === 'INSERT' && payload.new?.status === 'pending') {
               // Play simple notification sound using Web Audio API
               try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-                const oscillator = audioContext.createOscillator()
-                const gainNode = audioContext.createGain()
+                // Type assertion for webkit compatibility
+                interface WebKitWindow extends Window {
+                  webkitAudioContext?: typeof AudioContext;
+                }
                 
-                oscillator.connect(gainNode)
-                gainNode.connect(audioContext.destination)
-                
-                oscillator.frequency.value = 800
-                oscillator.type = 'sine'
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-                
-                oscillator.start(audioContext.currentTime)
-                oscillator.stop(audioContext.currentTime + 0.5)
-              } catch (e) {
+                const AudioContextClass = window.AudioContext || (window as WebKitWindow).webkitAudioContext
+                if (AudioContextClass) {
+                  const audioContext = new AudioContextClass()
+                  const oscillator = audioContext.createOscillator()
+                  const gainNode = audioContext.createGain()
+                  
+                  oscillator.connect(gainNode)
+                  gainNode.connect(audioContext.destination)
+                  
+                  oscillator.frequency.value = 800
+                  oscillator.type = 'sine'
+                  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+                  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+                  
+                  oscillator.start(audioContext.currentTime)
+                  oscillator.stop(audioContext.currentTime + 0.5)
+                }
+              } catch {
                 console.log('Could not play notification sound')
               }
             }
