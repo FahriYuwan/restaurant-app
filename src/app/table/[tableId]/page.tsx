@@ -1,8 +1,11 @@
 'use client'
 
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, ShoppingCart, Search, Filter } from 'lucide-react'
+import { ArrowLeft, ShoppingCart, Search, Filter, Clock, Coffee, Utensils, CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/database.types'
 import { CartProvider, useCart } from '@/components/CartContext'
@@ -12,6 +15,7 @@ import toast from 'react-hot-toast'
 
 type Menu = Database['public']['Tables']['menus']['Row']
 type Table = Database['public']['Tables']['tables']['Row']
+type Order = Database['public']['Tables']['orders']['Row']
 
 function TableOrderingContent() {
   const params = useParams()
@@ -24,6 +28,8 @@ function TableOrderingContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Semua')
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [latestOrder, setLatestOrder] = useState<Order | null>(null)
+  const [orderSubscription, setOrderSubscription] = useState<ReturnType<typeof supabase.channel> | null>(null)
   
   const { state } = useCart()
 
@@ -81,9 +87,14 @@ function TableOrderingContent() {
       }
     }
 
-    if (tableId) {
-      fetchData()
+    const init = async () => {
+      if (tableId) {
+        await fetchData()
+        await fetchLatestOrder()
+      }
     }
+
+    init()
 
     // Refresh data when user comes back to this page (for stock updates)
     const handleVisibilityChange = () => {
@@ -96,8 +107,80 @@ function TableOrderingContent() {
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (orderSubscription) {
+        orderSubscription.unsubscribe()
+      }
     }
-  }, [tableId, router])
+  }, [tableId, router, orderSubscription])
+
+  // Fetch the latest order for this table
+  const fetchLatestOrder = async () => {
+    try {
+      const { data: orderData, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('table_id', tableId)
+        .neq('status', 'delivered')
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (!error && orderData) {
+        setLatestOrder(orderData as Order)
+        subscribeToOrderUpdates((orderData as Order).id)
+      } else {
+        setLatestOrder(null)
+      }
+    } catch (error) {
+      console.error('Error fetching latest order:', error)
+    }
+  }
+
+  // Subscribe to order updates
+  const subscribeToOrderUpdates = (orderId: number) => {
+    if (orderSubscription) {
+      orderSubscription.unsubscribe()
+    }
+
+    const subscription = supabase
+      .channel('order_status_updates')
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'orders',
+          filter: `id=eq.${orderId}`
+        }, 
+        (payload) => {
+          setLatestOrder(payload.new as Order)
+          
+          // Show toast notification for status changes
+          const newStatus = payload.new.status
+          switch (newStatus) {
+            case 'preparing':
+              toast.success('Pesanan sedang diproses!')
+              break
+            case 'ready':
+              toast.success('Pesanan sudah siap! Silakan ambil di counter.')
+              break
+            case 'delivered':
+              toast.success('Pesanan telah diantar. Selamat menikmati!')
+              // Remove the order status indicator after delivery
+              setTimeout(() => setLatestOrder(null), 5000)
+              break
+            case 'cancelled':
+              toast.error('Pesanan dibatalkan')
+              // Remove the order status indicator after cancellation
+              setTimeout(() => setLatestOrder(null), 5000)
+              break
+          }
+        }
+      )
+      .subscribe()
+
+    setOrderSubscription(subscription)
+  }
 
   const categories = ['Semua', ...Array.from(new Set(menus.map(menu => menu.category)))]
 
@@ -107,6 +190,54 @@ function TableOrderingContent() {
     const matchesCategory = selectedCategory === 'Semua' || menu.category === selectedCategory
     return matchesSearch && matchesCategory
   })
+
+  // Function to get status information for display
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return {
+          text: 'Menunggu Konfirmasi',
+          icon: Clock,
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-100'
+        }
+      case 'preparing':
+        return {
+          text: 'Sedang Diproses',
+          icon: Coffee,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-100'
+        }
+      case 'ready':
+        return {
+          text: 'Siap Disajikan',
+          icon: Utensils,
+          color: 'text-green-600',
+          bgColor: 'bg-green-100'
+        }
+      case 'delivered':
+        return {
+          text: 'Selesai',
+          icon: CheckCircle,
+          color: 'text-green-600',
+          bgColor: 'bg-green-100'
+        }
+      case 'cancelled':
+        return {
+          text: 'Dibatalkan',
+          icon: Clock,
+          color: 'text-red-600',
+          bgColor: 'bg-red-100'
+        }
+      default:
+        return {
+          text: 'Status Tidak Diketahui',
+          icon: Clock,
+          color: 'text-gray-600',
+          bgColor: 'bg-gray-100'
+        }
+    }
+  }
 
   if (loading) {
     return (
@@ -143,6 +274,41 @@ function TableOrderingContent() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Order Status Indicator - Shown when there's an active order */}
+      {latestOrder && (
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const statusInfo = getStatusInfo(latestOrder.status)
+                  const StatusIcon = statusInfo.icon
+                  return (
+                    <>
+                      <div className={`p-2 rounded-full ${statusInfo.bgColor}`}>
+                        <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          Pesanan #{latestOrder.id}
+                        </p>
+                        <p className="text-xs text-slate-600">{statusInfo.text}</p>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+              <button
+                onClick={() => router.push(`/table/${tableId}/order/${latestOrder.id}`)}
+                className="text-amber-600 text-sm font-medium hover:text-amber-700 transition-colors"
+              >
+                Lihat Detail
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white shadow-sm sticky top-0 z-40">
         <div className="px-4 py-4">

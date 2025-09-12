@@ -178,7 +178,7 @@ export default function Cart({ tableId, isOpen, onClose }: CartProps) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
+      {/* Backdrop - Changed to transparent instead of black */}
       <div 
         className="absolute inset-0 bg-transparent" 
         onClick={onClose}
