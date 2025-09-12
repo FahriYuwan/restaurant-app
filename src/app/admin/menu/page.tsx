@@ -57,6 +57,29 @@ export default function MenuManagement() {
 
   const categories = ['Kopi', 'Makanan', 'Minuman', 'Snack', 'Dessert']
 
+  // Function to get image URL based on category
+  const getImageUrlForCategory = (category: string): string => {
+    switch (category.toLowerCase()) {
+      case 'kopi':
+        return '/menu-images/coffee.svg';
+      case 'makanan':
+        return '/menu-images/food.svg';
+      case 'minuman':
+        return '/menu-images/drink.svg';
+      case 'snack':
+        return '/menu-images/snack.svg';
+      case 'dessert':
+        return '/menu-images/dessert.svg';
+      default:
+        return '/menu-images/food.svg';
+    }
+  };
+
+  // Function to get image for menu item (with fallback)
+  const getMenuImage = (menu: Menu): string => {
+    return menu.image_url || getImageUrlForCategory(menu.category);
+  };
+
   useEffect(() => {
     fetchMenus()
   }, [])
@@ -138,7 +161,9 @@ export default function MenuManagement() {
         if (error) throw error
         toast.success('Menu updated successfully')
       } else {
-        // Create new menu
+        // Create new menu with automatic image assignment
+        const imageUrl = formData.image_url.trim() || getImageUrlForCategory(formData.category);
+        
         const insertPayload: MenuInsertData = {
           name: formData.name.trim(),
           description: formData.description.trim() || null,
@@ -146,7 +171,7 @@ export default function MenuManagement() {
           category: formData.category,
           stock_quantity: formData.stock_quantity,
           is_available: formData.is_available,
-          image_url: formData.image_url.trim() || null
+          image_url: imageUrl || null
         }
         const { error } = await insertMenu(insertPayload)
 
@@ -369,17 +394,11 @@ export default function MenuManagement() {
           <div key={menu.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {/* Image */}
             <div className="aspect-[4/3] bg-gray-100 relative">
-              {menu.image_url ? (
-                <img
-                  src={menu.image_url}
-                  alt={menu.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-400">
-                  <ImageIcon className="w-12 h-12" />
-                </div>
-              )}
+              <img
+                src={getMenuImage(menu)}
+                alt={menu.name}
+                className="w-full h-full object-cover"
+              />
               
               {!menu.is_available && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">

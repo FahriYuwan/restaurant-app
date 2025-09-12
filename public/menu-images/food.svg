@@ -1,0 +1,11 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#f0f0f0"/>
+  <g transform="translate(80, 60)">
+    <rect x="20" y="60" width="160" height="100" rx="10" fill="#8B4513"/>
+    <circle cx="60" cy="80" r="15" fill="#FF6347"/>
+    <circle cx="120" cy="90" r="12" fill="#32CD32"/>
+    <circle cx="90" cy="120" r="10" fill="#FFD700"/>
+    <path d="M40 60h120v-10c0-5-5-10-10-10H50c-5 0-10 5-10 10v10z" fill="#DAA520"/>
+  </g>
+  <text x="200" y="280" text-anchor="middle" font-family="Arial" font-size="20" fill="#333">Food</text>
+</svg>

@@ -28,6 +28,24 @@ export default function MenuItem({ menu }: MenuItemProps) {
     }).format(price)
   }
 
+  // Function to get default image based on category
+  const getDefaultImage = (category: string): string => {
+    switch (category.toLowerCase()) {
+      case 'kopi':
+        return '/menu-images/coffee.svg';
+      case 'makanan':
+        return '/menu-images/food.svg';
+      case 'minuman':
+        return '/menu-images/drink.svg';
+      case 'snack':
+        return '/menu-images/snack.svg';
+      case 'dessert':
+        return '/menu-images/dessert.svg';
+      default:
+        return '/menu-images/food.svg';
+    }
+  };
+
   const handleAddToCart = async () => {
     // Check current stock if item has stock tracking
     if (menu.stock_quantity !== null) {
@@ -80,12 +98,12 @@ export default function MenuItem({ menu }: MenuItemProps) {
             className="object-cover"
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-2"></div>
-              <p className="text-sm">No Image</p>
-            </div>
-          </div>
+          <Image
+            src={getDefaultImage(menu.category)}
+            alt={menu.name}
+            fill
+            className="object-cover"
+          />
         )}
         
         {!isAvailable && (

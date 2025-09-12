@@ -1,0 +1,10 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#f0f0f0"/>
+  <g transform="translate(100, 50)">
+    <path d="M100 50c0 27.6-22.4 50-50 50S0 77.6 0 50 22.4 0 50 0s50 22.4 50 50z" fill="#8B4513"/>
+    <path d="M120 50h20c0 27.6-22.4 50-50 50S40 77.6 40 50 62.4 0 90 0s30 22.4 30 50z" fill="#D2691E"/>
+    <path d="M60 100v80c0 11 9 20 20 20s20-9 20-20V100H60z" fill="#8B4513"/>
+    <circle cx="100" cy="50" r="10" fill="#FFD700"/>
+  </g>
+  <text x="200" y="280" text-anchor="middle" font-family="Arial" font-size="20" fill="#333">Coffee</text>
+</svg>
