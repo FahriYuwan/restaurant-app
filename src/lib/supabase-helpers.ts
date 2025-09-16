@@ -131,6 +131,7 @@ type StockUpdateResult = {
   old_stock?: number;
   new_stock?: number;
   quantity_subtracted?: number;
+  quantity_added?: number;
   available_stock?: number;
   requested?: number;
 }
@@ -165,6 +166,40 @@ export const updateMenuStock = async (menuId: number, quantityToSubtract: number
     return { data: stockResult, error: null }
   } catch (error: unknown) {
     console.error(`💥 Exception in updateMenuStock:`, error)
+    return { data: null, error: error instanceof Error ? error : new Error(String(error)) }
+  }
+}
+
+// Secure function to restore menu stock using database function
+export const restoreMenuStock = async (menuId: number, quantityToAdd: number): Promise<{
+  data: StockUpdateResult | null;
+  error: Error | null;
+}> => {
+  try {
+    console.log(`🔄 Restoring stock for menu ${menuId}, adding ${quantityToAdd}`)
+    
+    const { data, error } = await (supabase as AnySupabase).rpc('restore_menu_stock', {
+      menu_id: menuId,
+      quantity_to_add: quantityToAdd
+    })
+    
+    if (error) {
+      console.error(`❌ Stock restore RPC error:`, error)
+      return { data: null, error: error instanceof Error ? error : new Error(String(error)) }
+    }
+    
+    console.log(`📊 Stock restore result:`, data)
+    
+    // Cast the data to our expected type
+    const stockResult = data as StockUpdateResult
+    
+    if (stockResult && !stockResult.success) {
+      return { data: stockResult, error: new Error(stockResult.error || 'Stock restore failed') }
+    }
+    
+    return { data: stockResult, error: null }
+  } catch (error: unknown) {
+    console.error(`💥 Exception in restoreMenuStock:`, error)
     return { data: null, error: error instanceof Error ? error : new Error(String(error)) }
   }
 }

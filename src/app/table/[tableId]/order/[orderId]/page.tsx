@@ -24,6 +24,26 @@ export default function OrderStatusPage() {
   const [table, setTable] = useState<Table | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Fetch order items separately so we can refresh them
+  const fetchOrderItems = async () => {
+    try {
+      // Fetch order items with menu details
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('order_items')
+        .select(`
+          *,
+          menus (*)
+        `)
+        .eq('order_id', orderId)
+
+      if (itemsError) throw itemsError
+
+      setOrderItems(itemsData || [])
+    } catch (error: unknown) {
+      console.error('Error fetching order items:', error)
+    }
+  }
+
   useEffect(() => {
     const fetchOrderData = async () => {
       try {
@@ -43,18 +63,8 @@ export default function OrderStatusPage() {
 
         setOrder(orderData)
 
-        // Fetch order items with menu details
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            *,
-            menus (*)
-          `)
-          .eq('order_id', orderId)
-
-        if (itemsError) throw itemsError
-
-        setOrderItems(itemsData || [])
+        // Fetch order items
+        await fetchOrderItems()
 
         // Fetch table info
         const { data: tableData, error: tableError } = await supabase
@@ -94,6 +104,8 @@ export default function OrderStatusPage() {
         }, 
         (payload) => {
           setOrder(payload.new as Order)
+          // Refresh order items when order status changes
+          fetchOrderItems()
           
           // Show toast notification for status changes
           const newStatus = payload.new.status

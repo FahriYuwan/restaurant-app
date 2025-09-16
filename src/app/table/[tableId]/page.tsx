@@ -28,8 +28,8 @@ function TableOrderingContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Semua')
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [latestOrder, setLatestOrder] = useState<Order | null>(null)
-  const [orderSubscription, setOrderSubscription] = useState<ReturnType<typeof supabase.channel> | null>(null)
+  const [activeOrders, setActiveOrders] = useState<Order[]>([])
+  const [orderSubscriptions, setOrderSubscriptions] = useState<Record<number, ReturnType<typeof supabase.channel> | null>>({})
   
   const { state } = useCart()
 
@@ -90,7 +90,7 @@ function TableOrderingContent() {
     const init = async () => {
       if (tableId) {
         await fetchData()
-        await fetchLatestOrder()
+        await fetchActiveOrders()
       }
     }
 
@@ -107,44 +107,48 @@ function TableOrderingContent() {
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      if (orderSubscription) {
-        orderSubscription.unsubscribe()
-      }
+      Object.values(orderSubscriptions).forEach(subscription => {
+        if (subscription) {
+          subscription.unsubscribe()
+        }
+      })
     }
-  }, [tableId, router, orderSubscription])
+  }, [tableId, router, orderSubscriptions])
 
-  // Fetch the latest order for this table
-  const fetchLatestOrder = async () => {
+  // Fetch all active orders for this table
+  const fetchActiveOrders = async () => {
     try {
-      const { data: orderData, error } = await supabase
+      const { data: ordersData, error } = await supabase
         .from('orders')
         .select('*')
         .eq('table_id', tableId)
         .neq('status', 'delivered')
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
 
-      if (!error && orderData) {
-        setLatestOrder(orderData as Order)
-        subscribeToOrderUpdates((orderData as Order).id)
+      if (!error && ordersData) {
+        setActiveOrders(ordersData as Order[])
+        // Subscribe to updates for all active orders
+        ordersData.forEach((order: Order) => {
+          subscribeToOrderUpdates(order.id)
+        })
       } else {
-        setLatestOrder(null)
+        setActiveOrders([])
       }
     } catch (error) {
-      console.error('Error fetching latest order:', error)
+      console.error('Error fetching active orders:', error)
     }
   }
 
   // Subscribe to order updates
   const subscribeToOrderUpdates = (orderId: number) => {
-    if (orderSubscription) {
-      orderSubscription.unsubscribe()
+    // Check if already subscribed to this order
+    if (orderSubscriptions[orderId]) {
+      return
     }
 
     const subscription = supabase
-      .channel('order_status_updates')
+      .channel(`order_status_updates_${orderId}`)
       .on('postgres_changes', 
         { 
           event: 'UPDATE', 
@@ -153,7 +157,12 @@ function TableOrderingContent() {
           filter: `id=eq.${orderId}`
         }, 
         (payload) => {
-          setLatestOrder(payload.new as Order)
+          // Update the specific order in our state
+          setActiveOrders(prevOrders => 
+            prevOrders.map(order => 
+              order.id === orderId ? {...order, ...payload.new} as Order : order
+            )
+          )
           
           // Show toast notification for status changes
           const newStatus = payload.new.status
@@ -166,20 +175,28 @@ function TableOrderingContent() {
               break
             case 'delivered':
               toast.success('Pesanan telah diantar. Selamat menikmati!')
-              // Remove the order status indicator after delivery
-              setTimeout(() => setLatestOrder(null), 5000)
+              // Remove the order from active orders after delivery
+              setTimeout(() => {
+                setActiveOrders(prevOrders => prevOrders.filter(order => order.id !== orderId))
+              }, 5000)
               break
             case 'cancelled':
               toast.error('Pesanan dibatalkan')
-              // Remove the order status indicator after cancellation
-              setTimeout(() => setLatestOrder(null), 5000)
+              // Remove the order from active orders after cancellation
+              setTimeout(() => {
+                setActiveOrders(prevOrders => prevOrders.filter(order => order.id !== orderId))
+              }, 5000)
               break
           }
         }
       )
       .subscribe()
 
-    setOrderSubscription(subscription)
+    // Update subscriptions record
+    setOrderSubscriptions(prev => ({
+      ...prev,
+      [orderId]: subscription
+    }))
   }
 
   const categories = ['Semua', ...Array.from(new Set(menus.map(menu => menu.category)))]
@@ -274,37 +291,35 @@ function TableOrderingContent() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Order Status Indicator - Shown when there's an active order */}
-      {latestOrder && (
+      {/* Order Status Indicators - Show all active orders */}
+      {activeOrders.length > 0 && (
         <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {(() => {
-                  const statusInfo = getStatusInfo(latestOrder.status)
-                  const StatusIcon = statusInfo.icon
-                  return (
-                    <>
-                      <div className={`p-2 rounded-full ${statusInfo.bgColor}`}>
-                        <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          Pesanan #{latestOrder.id}
-                        </p>
-                        <p className="text-xs text-slate-600">{statusInfo.text}</p>
-                      </div>
-                    </>
-                  )
-                })()}
-              </div>
-              <button
-                onClick={() => router.push(`/table/${tableId}/order/${latestOrder.id}`)}
-                className="text-amber-600 text-sm font-medium hover:text-amber-700 transition-colors"
-              >
-                Lihat Detail
-              </button>
-            </div>
+          <div className="px-4 py-3 space-y-2">
+            {activeOrders.map(order => {
+              const statusInfo = getStatusInfo(order.status)
+              const StatusIcon = statusInfo.icon
+              return (
+                <div key={order.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${statusInfo.bgColor}`}>
+                      <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Pesanan #{order.id}
+                      </p>
+                      <p className="text-xs text-slate-600">{statusInfo.text}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push(`/table/${tableId}/order/${order.id}`)}
+                    className="text-amber-600 text-sm font-medium hover:text-amber-700 transition-colors"
+                  >
+                    Lihat Detail
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

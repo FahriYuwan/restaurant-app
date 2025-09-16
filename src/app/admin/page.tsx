@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Clock, CheckCircle, Coffee, Utensils, AlertCircle, RefreshCw, Volume2, VolumeX } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { updateOrder } from '@/lib/supabase-helpers'
+import { restoreMenuStock } from '@/lib/supabase-helpers'
 import { Database } from '@/lib/database.types'
 import { notificationSound } from '@/lib/notification-sound'
 import toast from 'react-hot-toast'
@@ -11,8 +12,13 @@ import toast from 'react-hot-toast'
 type Order = Database['public']['Tables']['orders']['Row'] & {
   tables: Database['public']['Tables']['tables']['Row']
   order_items: (Database['public']['Tables']['order_items']['Row'] & {
-    menus: Database['public']['Tables']['menus']['Row']
+    menus: Database['public']['Tables']['menus']['Row'] | null
   })[]
+}
+
+// Define type for order items when fetching separately
+type OrderItemWithMenu = Database['public']['Tables']['order_items']['Row'] & {
+  menus: Database['public']['Tables']['menus']['Row'] | null
 }
 
 interface OrderUpdateData {
@@ -97,6 +103,68 @@ export default function AdminDashboard() {
   const updateOrderStatus = async (orderId: number, newStatus: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled') => {
     setUpdatingStatus(orderId)
     try {
+      // If cancelling an order, restore stock
+      if (newStatus === 'cancelled') {
+        // First, get the order items to know what stock to restore
+        const { data: orderItems, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            quantity,
+            menus (id, name, stock_quantity)
+          `)
+          .eq('order_id', orderId)
+
+        if (itemsError) {
+          console.error('Error fetching order items:', itemsError)
+          toast.error('Failed to fetch order items for stock restoration')
+        } else {
+          // Restore stock for each item
+          const stockRestoreErrors: string[] = []
+          
+          for (const item of orderItems) {
+            // Fix: properly access the menu data by casting to the correct type
+            const orderItem = item as OrderItemWithMenu;
+            if (orderItem.menus && orderItem.menus.id) {
+              try {
+                console.log(`Restoring stock for ${orderItem.menus.name}: adding ${orderItem.quantity}`)
+              
+                const { data: stockResult, error: stockRestoreError } = await restoreMenuStock(
+                  orderItem.menus.id, 
+                  orderItem.quantity
+                )
+
+                if (stockRestoreError) {
+                  console.error('Stock restore error for item:', orderItem.menus.name, stockRestoreError)
+                  const errorMsg = stockRestoreError instanceof Error ? stockRestoreError.message : String(stockRestoreError)
+                  stockRestoreErrors.push(`${orderItem.menus.name}: ${errorMsg}`)
+                } else if (stockResult && stockResult.success) {
+                  console.log(`✅ Stock restored successfully for ${orderItem.menus.name}: ${stockResult.old_stock} -> ${stockResult.new_stock}`)
+                } else if (stockResult && !stockResult.success) {
+                  console.error('Stock restore failed:', orderItem.menus.name, stockResult.error)
+                  stockRestoreErrors.push(`${orderItem.menus.name}: ${stockResult.error || 'Unknown error'}`)
+                } else {
+                  console.error('Stock restore returned unexpected result:', orderItem.menus.name, stockResult)
+                  stockRestoreErrors.push(`${orderItem.menus.name}: Unexpected response format`)
+                }
+              } catch (stockError) {
+                console.error('Stock restore exception:', stockError)
+                const errorMsg = stockError instanceof Error ? stockError.message : String(stockError)
+                stockRestoreErrors.push(`${orderItem.menus.name}: ${errorMsg}`)
+              }
+            }
+          }
+
+          // Show stock restore errors but don't fail the entire cancellation
+          if (stockRestoreErrors.length > 0) {
+            console.warn('Some stock restorations failed:', stockRestoreErrors)
+            toast.error('Order cancelled, but there were issues restoring stock. Please check manually.')
+          } else {
+            console.log('✅ All stock restorations completed successfully')
+            toast.success('Order cancelled and stock restored successfully!')
+          }
+        }
+      }
+
       const updatePayload: OrderUpdateData = {
         status: newStatus,
         updated_at: new Date().toISOString()
@@ -299,7 +367,7 @@ export default function AdminDashboard() {
                 {order.order_items.map((item) => (
                   <div key={item.id} className="flex justify-between items-start py-2 border-b border-gray-100 last:border-b-0 gap-4">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-slate-900">{item.menus.name}</h4>
+                      <h4 className="font-semibold text-slate-900">{item.menus?.name || 'Unknown Item'}</h4>
                       <p className="text-sm text-slate-600 font-medium">
                         {formatPrice(item.price)} × {item.quantity}
                       </p>

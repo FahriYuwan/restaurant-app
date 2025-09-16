@@ -188,6 +188,48 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION update_menu_stock(integer, integer) TO anon;
 GRANT EXECUTE ON FUNCTION update_menu_stock(integer, integer) TO authenticated;
 
+-- Function to restore menu stock (for cancelled orders)
+CREATE OR REPLACE FUNCTION restore_menu_stock(
+    menu_id integer,
+    quantity_to_add integer
+)
+RETURNS json AS $$
+DECLARE
+    current_stock integer;
+    new_stock integer;
+    menu_record record;
+BEGIN
+    -- Get current menu data
+    SELECT * INTO menu_record FROM public.menus WHERE id = menu_id;
+    
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'Menu not found');
+    END IF;
+    
+    current_stock := COALESCE(menu_record.stock_quantity, 0);
+    
+    -- Calculate new stock (add the quantity back)
+    new_stock := current_stock + quantity_to_add;
+    
+    -- Update the stock
+    UPDATE public.menus 
+    SET stock_quantity = new_stock, updated_at = NOW()
+    WHERE id = menu_id;
+    
+    RETURN json_build_object(
+        'success', true,
+        'menu_id', menu_id,
+        'old_stock', current_stock,
+        'new_stock', new_stock,
+        'quantity_added', quantity_to_add
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permission to anonymous users
+GRANT EXECUTE ON FUNCTION restore_menu_stock(integer, integer) TO anon;
+GRANT EXECUTE ON FUNCTION restore_menu_stock(integer, integer) TO authenticated;
+
 -- Triggers for updated_at
 CREATE TRIGGER update_menus_updated_at BEFORE UPDATE ON public.menus
     FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
